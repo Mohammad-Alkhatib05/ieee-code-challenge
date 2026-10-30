@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>IEEE Code Challenge</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="shell">
+        <header>
+            <div class="brand"><strong>IEEE</strong><span>CODE CHALLENGE</span></div>
+            <div class="tag">ADVANCING TECHNOLOGY FOR HUMANITY</div>
+        </header>
+        <div id="welcome" class="modal">
+            <div class="dialog">
+                <div class="eyebrow">IEEE · PROGRAMMING CHALLENGE</div>
+                <h1>Think. Code. Launch.</h1>
+                <p>Build a program. Follow the colored path. Reach the star.</p><input id="player" maxlength="24"
+                    placeholder="Your name" autocomplete="off"><button id="start">START CHALLENGE →</button>
+                <h3>TOP 10</h3>
+                <div id="leadersWelcome"></div>
+            </div>
+        </div>
+        <main id="app" hidden>
+            <div class="status">
+                <div><small>PLAYER</small><b id="who"></b></div>
+                <div><small>LEVEL</small><b id="level">1 / 3</b></div>
+                <div><small>TIME</small><b id="time">00:00</b></div>
+                <div><small>SCORE</small><b id="score">0000</b></div><button id="restart" class="ghost">NEW
+                    PLAYER</button>
+            </div>
+            <section class="play">
+                <div class="boardTop">
+                    <div><b id="mission">MISSION 01</b><span id="hint">Program the rocket to collect the star.</span>
+                    </div>
+                    <div class="pills"><span class="pill green">PATH</span><span class="pill red">GOAL</span></div>
+                </div>
+                <div class="boardWrap">
+                    <div id="board" class="board"></div>
+                </div>
+                <div class="execution"><span>EXECUTION</span>
+                    <div id="trace" class="trace">Ready to run</div><button id="run">▶ RUN</button><button id="stop"
+                        class="ghost">■ STOP</button>
+                </div>
+            </section>
+            <section class="editor">
+                <div class="panel">
+                    <h3>COMMANDS <small>SELECT A SLOT, THEN A COMMAND</small></h3>
+                    <div class="commands"><button data-cmd="F">↑<small>FORWARD</small></button><button
+                            data-cmd="L">↶<small>LEFT</small></button><button
+                            data-cmd="R">↷<small>RIGHT</small></button><button
+                            data-cmd="0">f0<small>CALL</small></button></div>
+                    <p class="tip">Select a color before adding a command to make it conditional.</p>
+                    <div class="colors"><button class="color active" data-color="any">ANY</button><button class="color"
+                            data-color="g">GREEN</button><button class="color" data-color="b">BLUE</button><button
+                            class="color" data-color="r">RED</button></div>
+                </div>
+                <div class="panel">
+                    <div class="panelhead">
+                        <h3>FUNCTION F0 <small id="capacity">0 / 6</small></h3><button id="clear"
+                            class="ghost">CLEAR</button>
+                    </div>
+                    <div id="slots" class="slots"></div>
+                    <p class="tip">Click any slot to select or replace its command. Press Delete to empty it. Colors are
+                        optional conditions.</p>
+                </div>
+            </section>
+            <div class="foot">IEEE • ENGINEERING IDEAS INTO REALITY</div>
+        </main>
+        <div id="overlay" class="modal" hidden>
+            <div class="dialog">
+                <div class="eyebrow" id="overlayEyebrow"></div>
+                <h1 id="overlayTitle"></h1>
+                <p id="overlayText"></p><button id="continue">CONTINUE →</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
