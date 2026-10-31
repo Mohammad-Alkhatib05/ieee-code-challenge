@@ -6,7 +6,7 @@ const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const missionPrograms = [
   ['FFRFF', 'FFLFF', 'FRFFF', 'FFFRF', 'FFFLF', 'FLFFF'],
   ['FFRFLF', 'FFLFRF', 'FRFFLF', 'FLFFRF', 'FFRFFF', 'FFLFFF', 'FRFFRF', 'FLFFLF'],
-  ['FFRFFLF', 'FFLFFRF', 'FRFFRFF', 'FLFFLFF', 'FFFRFLF', 'FFFLFRF', 'FRFFF LF'.replace(/ /g, ''), 'FLFFF RF'.replace(/ /g, '')]
+  ['FFRFFLF', 'FFLFFRF', 'FRFFRFF', 'FLFFLFF', 'FFFRFLF', 'FFFLFRF', 'FRFFFLF', 'FLFFFRF']
 ];
 
 const configs = [
@@ -42,7 +42,6 @@ function pathFromProgram(commands) {
 let level = 0;
 let score = 0;
 let elapsed = 0;
-let started = 0;
 let player = '';
 let program = [];
 let color = 'any';
@@ -55,14 +54,17 @@ let clock = null;
 let used = new Set();
 let attempts = 0;
 let selectedSlot = 0;
+let executionId = 0;
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function solutionFor(p) {
   const instructions = [];
 
   let heading = dirs.findIndex(
-    ([dx, dy]) => p[0][0] + dx === p[1][0] && p[0][1] + dy === p[1][1]
+    ([dx, dy]) =>
+      p[0][0] + dx === p[1][0] &&
+      p[0][1] + dy === p[1][1]
   );
 
   for (let i = 1; i < p.length; i++) {
@@ -110,7 +112,7 @@ function generate() {
 
   let p = pick.p.map(v => [...v]);
 
-  const flip = Math.random() < .5;
+  const flip = Math.random() < 0.5;
   const turn = Math.floor(Math.random() * 4);
 
   p = p.map(([x, y]) => {
@@ -180,27 +182,27 @@ function generate() {
 }
 
 function render() {
-  const b = $('board');
-  b.style.setProperty('--n', map.n);
-  b.innerHTML = '';
+  const board = $('board');
+  board.style.setProperty('--n', map.n);
+  board.innerHTML = '';
 
   for (let y = 0; y < map.n; y++) {
     for (let x = 0; x < map.n; x++) {
-      const d = document.createElement('div');
-      const c = map.tiles.get(`${x},${y}`);
+      const tile = document.createElement('div');
+      const tileColor = map.tiles.get(`${x},${y}`);
 
-      d.className = `tile ${c || ''}`;
+      tile.className = `tile ${tileColor || ''}`;
 
       if (x === map.goal[0] && y === map.goal[1]) {
-        d.classList.add('goal');
+        tile.classList.add('goal');
       }
 
       if (x === rocket.x && y === rocket.y) {
-        d.classList.add('rocket');
-        d.style.setProperty('--rot', `${rocket.dir * 90 - 90}deg`);
+        tile.classList.add('rocket');
+        tile.style.setProperty('--rot', `${rocket.dir * 90 - 90}deg`);
       }
 
-      b.append(d);
+      board.append(tile);
     }
   }
 
@@ -240,6 +242,7 @@ function renderSlots() {
 
     if (cmd) {
       el.dataset.color = cmd.color;
+
       el.innerHTML =
         `${{ F: '↑', L: '↶', R: '↷', 0: 'f0' }[cmd.cmd]}` +
         `<small>${cmd.color === 'any' ? 'ANY' : cmd.color.toUpperCase()}</small>`;
@@ -257,20 +260,34 @@ function renderSlots() {
   }
 }
 
-function setBusy(v) {
-  playing = v;
-  $('run').disabled = v;
+function setBusy(value) {
+  playing = value;
+  $('run').disabled = value;
+  $('clear').disabled = value;
 
-  document.querySelectorAll('[data-cmd]').forEach(b => {
-    b.disabled = v;
+  document.querySelectorAll('[data-cmd]').forEach(button => {
+    button.disabled = value;
   });
-
-  $('clear').disabled = v;
 }
 
+// STOP: stop execution and leave the rocket where it is.
 function stop() {
+  executionId++;
   halt = true;
   setBusy(false);
+}
+
+// RESET: stop execution and return to the starting position.
+function resetRocket() {
+  stop();
+
+  if (initial) {
+    rocket = { ...initial };
+    render();
+
+    $('trace').textContent =
+      'Reset to start. Edit your commands and press RUN.';
+  }
 }
 
 function message(title, desc, eyebrow, button, callback) {
@@ -289,6 +306,8 @@ function message(title, desc, eyebrow, button, callback) {
 
 async function execute() {
   if (playing || !program.some(Boolean)) return;
+
+  const thisExecution = ++executionId;
 
   halt = false;
   setBusy(true);
@@ -366,6 +385,9 @@ async function execute() {
 
     await wait(240);
 
+    // Prevent an old execution from continuing after STOP or RESET.
+    if (thisExecution !== executionId || halt) return;
+
     if (rocket.x === map.goal[0] && rocket.y === map.goal[1]) {
       setBusy(false);
 
@@ -423,15 +445,17 @@ async function execute() {
       'Program ended before reaching the star. Edit and retry.';
   }
 
-  // Return to the starting position after a failed attempt.
-  rocket = { ...initial };
-  render();
+  // Automatically reset ONLY when outside the colored path.
+  if (!map.tiles.has(`${rocket.x},${rocket.y}`)) {
+    rocket = { ...initial };
+    render();
+  }
 }
 
-function fmt(s) {
+function fmt(seconds) {
   return (
-    `${String(Math.floor(s / 60)).padStart(2, '0')}:` +
-    `${String(s % 60).padStart(2, '0')}`
+    `${String(Math.floor(seconds / 60)).padStart(2, '0')}:` +
+    `${String(seconds % 60).padStart(2, '0')}`
   );
 }
 
@@ -470,28 +494,30 @@ function showLeaders() {
   const rows = leaders();
 
   $('leadersWelcome').innerHTML = rows.length
-    ? rows.map((v, i) =>
-        `<div class="leader"><span>${i + 1}. ${escapeHtml(v.name)}</span>` +
-        `<span>${v.score} · ${fmt(v.time)}</span></div>`
+    ? rows.map((value, index) =>
+        `<div class="leader"><span>${index + 1}. ${escapeHtml(value.name)}</span>` +
+        `<span>${value.score} · ${fmt(value.time)}</span></div>`
       ).join('')
     : '<p>No scores yet. Be the first champion!</p>';
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, character => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-  }[c]));
+  }[character]));
 }
 
 function resetAll() {
   stop();
   clearInterval(clock);
+
   $('app').hidden = true;
   $('welcome').hidden = false;
+
   showLeaders();
 }
 
@@ -523,12 +549,12 @@ $('start').onclick = () => {
   }, 1000);
 };
 
-document.querySelectorAll('[data-cmd]').forEach(b => {
-  b.onclick = () => {
+document.querySelectorAll('[data-cmd]').forEach(button => {
+  button.onclick = () => {
     if (playing) return;
 
     program[selectedSlot] = {
-      cmd: b.dataset.cmd,
+      cmd: button.dataset.cmd,
       color
     };
 
@@ -537,17 +563,17 @@ document.querySelectorAll('[data-cmd]').forEach(b => {
   };
 });
 
-document.querySelectorAll('[data-color]').forEach(b => {
-  b.onclick = () => {
-    color = b.dataset.color;
+document.querySelectorAll('[data-color]').forEach(button => {
+  button.onclick = () => {
+    color = button.dataset.color;
 
-    document.querySelectorAll('[data-color]').forEach(x => {
-      x.classList.toggle('active', x === b);
+    document.querySelectorAll('[data-color]').forEach(item => {
+      item.classList.toggle('active', item === button);
     });
   };
 });
 
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', event => {
   if (
     playing ||
     $('app').hidden ||
@@ -557,7 +583,7 @@ document.addEventListener('keydown', e => {
   }
 
   if (
-    (e.key === 'Delete' || e.key === 'Backspace') &&
+    (event.key === 'Delete' || event.key === 'Backspace') &&
     document.activeElement.tagName !== 'INPUT'
   ) {
     program[selectedSlot] = null;
@@ -574,6 +600,8 @@ $('clear').onclick = () => {
 };
 
 $('run').onclick = execute;
+
+$('stop').textContent = '■ STOP';
 $('stop').onclick = stop;
 
 $('restart').onclick = () => {
@@ -585,5 +613,18 @@ $('restart').onclick = () => {
     resetAll
   );
 };
+
+// Add RESET next to STOP without changing the HTML.
+let resetButton = document.getElementById('reset');
+
+if (!resetButton) {
+  resetButton = document.createElement('button');
+  resetButton.id = 'reset';
+  resetButton.className = 'ghost';
+  $('stop').after(resetButton);
+}
+
+resetButton.textContent = '↺ RESET';
+resetButton.onclick = resetRocket;
 
 showLeaders();
